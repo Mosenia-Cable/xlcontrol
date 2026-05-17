@@ -1,0 +1,3 @@
+[submodule "netrunner"]
+	path = netrunner
+	url = https://github.com/Mosenia-Cable/netrunner

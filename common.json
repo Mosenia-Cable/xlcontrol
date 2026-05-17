@@ -1,0 +1,13 @@
+{
+    "netrunner": "http://192.168.1.41:4000",
+    "conn": "192.168.1.4",
+    "conn_u": "root",
+    "conn_p": "password",
+    "ts_offset": 0,
+    "flavor_alias": {
+        "LDL1": "SN",
+        "LDL2": "SN",
+        "G": "M"
+    },
+    "sensor_flavor": "SN"
+}
