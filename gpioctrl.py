@@ -8,8 +8,8 @@ class Pi():
         self.pins = pins
         log.debug(f"Setting up Raspberry Pi GPIO for pins {self.pins}")
         import RPi.GPIO as GPIO # type: ignore
-        self.GPIO.setmode(GPIO.BCM)
         self.GPIO = GPIO
+        self.GPIO.setmode(GPIO.BCM)
         for pin in self.pins:
             log.debug(f"Setting up pin {pin}")
             self.GPIO.setup(pin, self.GPIO.OUT)
