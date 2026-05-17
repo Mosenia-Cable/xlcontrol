@@ -56,17 +56,16 @@ def cancel(pres_id:str=None, **kwargs):
     global COMMON
     sensor_flavor = COMMON.get("sensor_flavor", "SN")
     global PRESENTATIONS
-    LOADED_PRES = PRESENTATIONS.get(pres_id)
+    LOADED_PRES = PRESENTATIONS.get(pres_id, None)
     ## delete loaded from bank if a not-yet-running presentation is cancelled before it's run
-    if pres_id:
+    if LOADED_PRES:
         if LOADED_PRES.get("flav_name", None) == sensor_flavor:
             # this is a sensor flavor presentation, we need to call sensor down
             log.info(f"Dropping LDL presentation on Weather Star.")
             TFM.TN.write(f"echo \"CALL PE SNDN\" | /twc/bin/fire_str", timeout=10)
-    if pres_id:
-        if PRESENTATIONS.get(pres_id, None) != None: # only try to pop if loaded into bank (not run yet)
-            PRESENTATIONS.pop(pres_id) # popper
-            log.info(f"Presentation {pres_id} was cancelled.")
+    if PRESENTATIONS.get(pres_id, None) != None: # only try to pop if loaded into bank (not run yet)
+        PRESENTATIONS.pop(pres_id) # popper
+        log.info(f"Presentation {pres_id} was cancelled.")
 
 def load(pres_id:str, flav_name:str, flav_length:float, **kwargs):
     '''Load a presentation into the bank, in preparation for run.'''
