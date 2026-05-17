@@ -42,5 +42,6 @@ if __name__ == "__main__":
     coloredlogs.install(level="DEBUG")
     try:
         GPIO = Pi([4, 22, 6, 26])
-    except:
+    except Exception as E:
+        log.error(f"{E}",exc_info=True)
         GPIO = Dummy()
