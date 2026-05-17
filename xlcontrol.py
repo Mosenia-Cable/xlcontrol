@@ -115,7 +115,7 @@ def run(pres_id:str, ts:float=0, **kwargs):
     ts_offset = float(COMMON.get("ts_offset", 0))
     ts = ts + ts_offset # use an addition equation here, so a user defining a negative offset will subtract
     global PRESENTATIONS
-    LOADED_PRES = PRESENTATIONS.get(pres_id, None)
+    LOADED_PRES = PRESENTATIONS.get(pres_id, {})
     flavor = LOADED_PRES.get("flav_name", None)
     log.debug(f"Desired run time: {ts}")
     retry_count = 0
