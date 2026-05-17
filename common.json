@@ -9,5 +9,12 @@
         "LDL2": "SN",
         "G": "M"
     },
-    "sensor_flavor": "SN"
+    "sensor_flavor": "SN",
+    "music": true,
+    "flavor_playlists": {
+        "default": "playlists/default"
+    },
+    "sounddevice": null,
+    "gpio": true,
+    "gpio_pins": [4,22,6,26]
 }

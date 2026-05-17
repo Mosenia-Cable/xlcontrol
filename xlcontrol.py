@@ -1,18 +1,21 @@
-import os, sys, json, requests, time
+import os, sys, json, random, time
 import logging
-from telftpman2 import TelFTPMan
 PROGRAM_PATH = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(PROGRAM_PATH)
+from telftpman2 import TelFTPMan
+from music import MusicBox
 
 log = logging.getLogger(__name__)
 
 COMMON = {}
 PRESENTATIONS = {}
+MUSICBOX = None
 TFM = TelFTPMan(autostart=False)
 
 def load_settings():
     '''Loads common.json dictionary'''
     global COMMON
+    global MUSICBOX
     common_path = os.path.join(PROGRAM_PATH, "common.json")
     if os.path.exists(common_path):
         try:
@@ -33,6 +36,15 @@ def load_settings():
                 TFM.conn_p = STAR_P
                 TFM.config_ok = True # i am not going to change TFM2's code rn so this is a hijack
                 TFM.connect(ftp=False)
+
+            # musicbox setup
+            music = COMMON.get("music", False)
+            if music:
+                if not MUSICBOX: # this only gets initialized once, so if changes are made to pins or device, it needs to be restarted
+                    sounddevice = COMMON.get("sounddevice", None)
+                    gpio_enabled = COMMON.get("gpio", False)
+                    gpio_pins = COMMON.get("gpio_pins", [])
+                    MUSICBOX = MusicBox(device_id=sounddevice, gpio=gpio_enabled, gpio_pins=gpio_pins) 
         except json.JSONDecodeError:
             log.error(f"Malformed JSON in {common_path}.")
         except: 
@@ -44,9 +56,10 @@ def cancel(pres_id:str=None, **kwargs):
     global COMMON
     sensor_flavor = COMMON.get("sensor_flavor", "SN")
     global PRESENTATIONS
+    LOADED_PRES = PRESENTATIONS.get(pres_id)
     ## delete loaded from bank if a not-yet-running presentation is cancelled before it's run
     if pres_id:
-        if PRESENTATIONS.get(pres_id, None) == sensor_flavor:
+        if LOADED_PRES.get("flav_name", None) == sensor_flavor:
             # this is a sensor flavor presentation, we need to call sensor down
             log.info(f"Dropping LDL presentation on Weather Star.")
             TFM.TN.write(f"echo \"CALL PE SNDN\" | /twc/bin/fire_str", timeout=10)
@@ -68,7 +81,10 @@ def load(pres_id:str, flav_name:str, flav_length:float, **kwargs):
 
     if flav_name:
         global PRESENTATIONS
-        PRESENTATIONS[pres_id] = flav_name # set this before figuring out if flavor or sensor
+        PRESENTATIONS[pres_id] = {
+            "flav_name": flav_name, # set this before figuring out if flavor or sensor
+            "flav_length": flav_length 
+        }
         sensor_flavor = COMMON.get("sensor_flavor", "SN")
         if flav_name == sensor_flavor: # is sensor?
             log.debug(f"Got a load for sensor flavor. Sensor is cued in real-time, load not needed.")
@@ -77,6 +93,21 @@ def load(pres_id:str, flav_name:str, flav_length:float, **kwargs):
         TFM.TN.write(f"echo \"CALL PE LOAD FCST {flav_name}\" | /twc/bin/fire_str", timeout=10)
         log.info(f"Presentation {pres_id} loaded as flavor '{flav_name}'")
 
+        if COMMON.get("music", False) and MUSICBOX: # if music toggled True and music box is loaded
+            # let's load up some music!
+            playlists = COMMON.get("flavor_playlists", {})
+            default_playlist = playlists.get("default", "playlists/default")
+            playlist = playlists.get(flav_name, default_playlist)
+            if os.path.exists(playlist):
+                if os.path.isdir(playlist):
+                    songs = os.listdir(playlist)
+                    song = random.choice(songs)
+                    song = os.path.join(playlist, song) # get full relative path
+                    MUSICBOX.load(song) # load that song
+
+
+        
+
 def run(pres_id:str, ts:float=0, **kwargs):
     '''Run a loaded presentation at the defined epoch timestamp. If undefined, run immediately.'''
     global COMMON
@@ -84,19 +115,22 @@ def run(pres_id:str, ts:float=0, **kwargs):
     ts_offset = float(COMMON.get("ts_offset", 0))
     ts = ts + ts_offset # use an addition equation here, so a user defining a negative offset will subtract
     global PRESENTATIONS
-    flavor = PRESENTATIONS.get(pres_id, None)
+    LOADED_PRES = PRESENTATIONS.get(pres_id, None)
+    flavor = LOADED_PRES.get("flav_name", None)
     log.debug(f"Desired run time: {ts}")
     retry_count = 0
     if not flavor:
         # if for some reason the RUN is sent faster than the LOAD, we can retry up to 5 times
         while not flavor and retry_count < 5: 
             log.warning(f"No flavor loaded matching ID {pres_id}! Trying again... ({retry_count + 1})")
-            flavor = PRESENTATIONS.get(pres_id, None)
+            LOADED_PRES = PRESENTATIONS.get(pres_id, None)
+            flavor = LOADED_PRES.get("flav_name", None)
             retry_count += 1
             time.sleep(0.25)
 
     if flavor:
         # need to wait till the timestamp on our end before we can send
+        flavor_duration = LOADED_PRES.get("flav_length", None)
         while time.time() < ts:
             time.sleep(0.05) # spare the CPU cycles just a smidge...
         if flavor == sensor_flavor: 
@@ -106,8 +140,21 @@ def run(pres_id:str, ts:float=0, **kwargs):
             # we don't pop the LDL pres from the bank because we need to remember it so we can cancel it later!
         else:
             # run loaded flavor
+
+            # allow me to explain this weird music setup
+            end_ts = None
+            if flavor_duration and MUSICBOX: # if we got a flavor length and musicbox is loaded, do music shit
+                end_ts = time.time() + flavor_duration # derive an end timestamp so we know when to cut the music instead of doing an inaccurate time.sleep()
+                MUSICBOX.play() # play
+
             TFM.TN.write(f"echo \"CALL PE RUN FCST {flavor}\" | /twc/bin/fire_str", timeout=10)
             PRESENTATIONS.pop(pres_id) # clear the presentation from the bank so it isn't re-run if the same ID happens to be called
+
+            # after making sure we started the presentation on the XL,
+            if end_ts and MUSICBOX: # if we have an end timestamp and musicbox is loaded (likely playing)
+                while time.time() < end_ts: # wait till the end stamp
+                    time.sleep(0.1)
+                MUSICBOX.stop() # stop the playback
     else:
         log.warning(f"Failed to run {pres_id}, no flavor loaded matching the ID.")
         

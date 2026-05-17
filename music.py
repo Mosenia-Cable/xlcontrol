@@ -7,14 +7,15 @@ import time
 log = logging.getLogger(__name__)
 
 class MusicBox():
-    def __init__(self, device_id, gpio:bool=True, gpio_pins:list=[]):
+    def __init__(self, device_id=None, gpio:bool=True, gpio_pins:list=[]):
         self.data = None
         self.samplerate = None
         self.GPIO = None
-        try:
-            SD.default.device = device_id
-        except Exception as E:
-            log.error(f"Error trying to define default sound device. {E}")
+        if device_id:
+            try:
+                SD.default.device = device_id
+            except Exception as E:
+                log.error(f"Error trying to define default sound device. {E}")
         if gpio == True:
             try:
                 self.GPIO = Pi(gpio_pins)
