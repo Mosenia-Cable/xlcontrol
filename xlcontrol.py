@@ -122,7 +122,7 @@ def run(pres_id:str, ts:float=0, **kwargs):
         # if for some reason the RUN is sent faster than the LOAD, we can retry up to 5 times
         while not flavor and retry_count < 5: 
             log.warning(f"No flavor loaded matching ID {pres_id}! Trying again... ({retry_count + 1})")
-            LOADED_PRES = PRESENTATIONS.get(pres_id, None)
+            LOADED_PRES = PRESENTATIONS.get(pres_id, {})
             flavor = LOADED_PRES.get("flav_name", None)
             retry_count += 1
             time.sleep(0.25)
