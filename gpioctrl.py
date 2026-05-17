@@ -38,6 +38,8 @@ class Dummy():
         pass
 
 if __name__ == "__main__":
+    import coloredlogs
+    coloredlogs.install(level="DEBUG")
     try:
         GPIO = Pi([4, 22, 6, 26])
     except:
