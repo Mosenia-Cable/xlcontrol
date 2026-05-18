@@ -3,7 +3,8 @@
     "conn": "192.168.1.4",
     "conn_u": "root",
     "conn_p": "password",
-    "ts_offset": 0,
+    "user_ts_offset": 0,
+    "auto_ts_offset": true,
     "flavor_alias": {
         "LDL1": "SN",
         "LDL2": "SN",

@@ -10,7 +10,16 @@ log = logging.getLogger(__name__)
 COMMON = {}
 PRESENTATIONS = {}
 MUSICBOX = None
+AUTO_TS_OFFSET = 0
 TFM = TelFTPMan(autostart=False)
+
+def adjust_auto_offset(server_ts:float, **kwargs):
+    global AUTO_TS_OFFSET
+    AUTO_TS_OFFSET = time.time() - server_ts # subtract server time from local time. 
+    # we do this because if the server is running AHEAD of us, that means the host will cue before we reach the time stamp to cue.
+    # that gives us a negative difference, which will then be added to the cue ts to make the cue happen faster (in sync with the host).
+    # now, on the contrary, if the server is running behind us, that means we'll cue too early, so we need to ADD time
+    log.debug(f"Automatic timestamp offset derived from server time: {AUTO_TS_OFFSET}")
 
 def load_settings():
     '''Loads common.json dictionary'''
@@ -110,9 +119,11 @@ def load(pres_id:str, flav_name:str, flav_length:float, **kwargs):
 def run(pres_id:str, ts:float=0, **kwargs):
     '''Run a loaded presentation at the defined epoch timestamp. If undefined, run immediately.'''
     global COMMON
+    global AUTO_TS_OFFSET
     sensor_flavor = COMMON.get("sensor_flavor", "SN")
-    ts_offset = float(COMMON.get("ts_offset", 0))
-    ts = ts + ts_offset # use an addition equation here, so a user defining a negative offset will subtract
+    user_ts_offset = float(COMMON.get("user_ts_offset", 0))
+    ts = ts + user_ts_offset # use an addition equation here, so a user defining a negative offset will subtract
+    ts = ts + AUTO_TS_OFFSET # add the automated offset. should always be 0 if not enabled so this is fine
     global PRESENTATIONS
     LOADED_PRES = PRESENTATIONS.get(pres_id, {})
     flavor = LOADED_PRES.get("flav_name", None)

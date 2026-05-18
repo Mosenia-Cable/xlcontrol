@@ -13,11 +13,19 @@ receiver.FUNCTIONS["LF_LOAD"] = xlcontrol.load
 receiver.FUNCTIONS["LF_RUN"] = xlcontrol.run
 receiver.FUNCTIONS["LF_CANCEL"] = xlcontrol.cancel
 
+def do_nothing(**kwargs):
+    '''It does nothing.'''
+    pass
+
 def refresh_configs(interval=120): # every 2 minutes by default
     while True:
-        time.sleep(interval)
         log.info(f"Refreshing common.json.")
         xlcontrol.load_settings()
+        if xlcontrol.COMMON.get("auto_ts_offset", False):
+            receiver.FUNCTIONS["HEARTBEAT"] = xlcontrol.adjust_auto_offset # allow HEARTBEAT packets to adjust the automated offset
+        else:
+            receiver.FUNCTIONS["HEARTBEAT"] = do_nothing # this will get rid of the warnings that fuss no function is set
+        time.sleep(interval)
 
 receiver.threading.Thread(target=refresh_configs, daemon=True).start() # wretched but idgaf
 
