@@ -46,6 +46,14 @@ def load_settings():
                 TFM.config_ok = True # i am not going to change TFM2's code rn so this is a hijack
                 TFM.connect(ftp=False)
 
+            if TFM.TN.connected == False:
+                log.warning(f"Lost connection to Star XL ({STAR_IP})! Attempting to reconnect...")
+                TFM.connect(ftp=False)
+                if TFM.TN.connected == True:
+                    log.info(f"Reconnection successful ({STAR_IP}).")
+                else:
+                    log.error(f"Reconnection FAILED ({STAR_IP}).", exc_info=False)
+
             # musicbox setup
             music = COMMON.get("music", False)
             if music:
