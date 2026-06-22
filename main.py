@@ -29,4 +29,8 @@ def refresh_configs(interval=120): # every 2 minutes by default
 
 receiver.threading.Thread(target=refresh_configs, daemon=True).start() # wretched but idgaf
 
-asyncio.run(receiver.main())
+try:
+    asyncio.run(receiver.main())
+except:
+    log.error(f"Something strange happened.", exc_info=True)
+    xlcontrol.TFM.disconnect() # disconnect if an error occurs, otherwise we max out IRIX's telnetd
